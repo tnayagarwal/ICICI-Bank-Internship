@@ -1,0 +1,834 @@
+{
+  "version": "2.0",
+  "last_updated": "2024-12-19",
+  "schema_version": "advanced",
+  "agents": {
+    "attendance": {
+      "name": "AttendanceAgent",
+      "description": "Handles employee attendance operations including check-in, check-out, overtime calculations, attendance monitoring, and compliance tracking",
+      "agent_type": "operational",
+      "capabilities": [
+        "checkin",
+        "checkout", 
+        "overtime_calculation",
+        "attendance_monitoring",
+        "compliance_tracking",
+        "location_verification",
+        "time_tracking",
+        "schedule_validation"
+      ],
+      "functions": {
+        "main_function": "attendance_agent_main",
+        "process_function": "process_attendance",
+        "module_path": "agents.attendance_agent"
+      },
+      "data_schemas": {
+        "input_schema": {
+          "emp_id": {
+            "type": "string",
+            "required": true,
+            "validation": "^[0-9]{5}$",
+            "description": "5-digit employee ID"
+          },
+          "action": {
+            "type": "string", 
+            "required": true,
+            "enum": ["checkin", "checkout", "overtime", "status", "compliance"],
+            "description": "Action to perform"
+          },
+          "timestamp": {
+            "type": "string",
+            "required": false,
+            "format": "ISO8601",
+            "description": "Optional timestamp override"
+          }
+        },
+        "output_schema": {
+          "status": {
+            "type": "string",
+            "enum": ["success", "error", "warning", "pending"],
+            "description": "Operation status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable result message"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "attendance_id": {"type": "string"},
+              "work_hours": {"type": "float"},
+              "overtime_hours": {"type": "float"},
+              "location_verified": {"type": "boolean"},
+              "compliance_score": {"type": "float"}
+            },
+            "description": "Structured attendance data"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "processed_at": {"type": "string"},
+              "agent_version": {"type": "string"},
+              "confidence": {"type": "float"}
+            }
+          }
+        }
+      },
+      "configuration": {
+        "max_retries": 3,
+        "timeout": 30,
+        "priority": "HIGH",
+        "requires_location": false,
+        "async_capable": true,
+        "stateful": false,
+        "idempotent": true
+      },
+      "triggers": [
+        "checkin", "check in", "check-in",
+        "checkout", "check out", "check-out",
+        "attendance", "present", "absent",
+        "overtime", "extra hours", "work hours",
+        "time tracking", "clock in", "clock out",
+        "location", "office", "workplace"
+      ],
+      "inter_agent_compatibility": {
+        "works_well_with": ["leave", "chatbot"],
+        "conflicts_with": [],
+        "data_dependencies": {
+          "requires_from": {
+            "chatbot": ["policy_info", "schedule_info"],
+            "leave": ["leave_status", "approved_absences"]
+          },
+          "provides_to": {
+            "leave": ["work_hours", "attendance_record"],
+            "chatbot": ["attendance_status", "compliance_data"]
+          }
+        },
+        "workflow_position": "primary",
+        "can_initiate_workflows": true,
+        "can_be_parallel": true
+      },
+      "dependencies": ["postgres_client"],
+      "status": "active",
+      "error_handling": {
+        "retry_strategy": "exponential_backoff",
+        "fallback_agent": "chatbot",
+        "critical_errors": ["database_error"],
+        "recoverable_errors": ["network_error"]
+      }
+    },
+    "chatbot": {
+      "name": "ChatbotAgent",
+      "description": "Provides HR policy assistance, general knowledge, company information, and handles general conversational queries",
+      "agent_type": "informational",
+      "capabilities": [
+        "hr_policy_assistance",
+        "general_knowledge",
+        "company_information",
+        "conversation_handling",
+        "document_search",
+        "policy_interpretation",
+        "question_answering",
+        "context_gathering"
+      ],
+      "functions": {
+        "main_function": "chatbot_agent_main",
+        "process_function": "process_query",
+        "module_path": "agents.chatbot_agent"
+      },
+      "data_schemas": {
+        "input_schema": {
+          "query": {
+            "type": "string",
+            "required": true,
+            "min_length": 3,
+            "max_length": 1000,
+            "description": "User question or query"
+          },
+          "context": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "previous_queries": {"type": "array"},
+              "employee_context": {"type": "object"},
+              "workflow_context": {"type": "object"}
+            },
+            "description": "Additional context for better responses"
+          },
+          "response_format": {
+            "type": "string",
+            "enum": ["conversational", "structured", "policy_reference"],
+            "default": "conversational"
+          }
+        },
+        "output_schema": {
+          "answer": {
+            "type": "string",
+            "description": "Generated response to the query"
+          },
+          "confidence": {
+            "type": "float",
+            "range": [0, 1],
+            "description": "Confidence in the response accuracy"
+          },
+          "sources": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Information sources used"
+          },
+          "follow_up_questions": {
+            "type": "array",
+            "description": "Suggested follow-up questions"
+          },
+          "policy_references": {
+            "type": "array",
+            "description": "Relevant policy documents or sections"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "response_type": {"type": "string"},
+              "processing_time": {"type": "float"},
+              "context_used": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "configuration": {
+        "max_retries": 2,
+        "timeout": 45,
+        "priority": "MEDIUM",
+        "requires_location": false,
+        "async_capable": true,
+        "stateful": true,
+        "idempotent": false,
+        "context_memory": true
+      },
+      "triggers": [
+        "question", "help", "policy", "information",
+        "what", "how", "when", "where", "why", "who",
+        "explain", "tell me", "I want to know",
+        "company", "rule", "procedure", "guideline"
+      ],
+      "inter_agent_compatibility": {
+        "works_well_with": ["attendance", "leave", "complaint"],
+        "conflicts_with": [],
+        "data_dependencies": {
+          "requires_from": {
+            "attendance": ["attendance_patterns", "compliance_issues"],
+            "leave": ["leave_policies", "approval_processes"],
+            "complaint": ["common_issues", "resolution_patterns"]
+          },
+          "provides_to": {
+            "attendance": ["policy_clarifications", "schedule_rules"],
+            "leave": ["policy_interpretations", "process_guidance"],
+            "complaint": ["policy_context", "escalation_procedures"]
+          }
+        },
+        "workflow_position": "support",
+        "can_initiate_workflows": false,
+        "can_be_parallel": true,
+        "coordination_role": "context_provider"
+      },
+      "dependencies": ["memory", "groq_client"],
+      "status": "active",
+      "error_handling": {
+        "retry_strategy": "simple_retry",
+        "fallback_response": "I apologize, but I'm unable to provide that information right now. Please try again or contact HR directly.",
+        "critical_errors": ["llm_unavailable"],
+        "recoverable_errors": ["context_loss", "memory_error"]
+      }
+    },
+    "leave": {
+      "name": "LeaveAgent", 
+      "description": "Processes leave requests, approvals, balance tracking, and leave policy management",
+      "agent_type": "transactional",
+      "capabilities": [
+        "leave_request_processing",
+        "approval_workflow",
+        "balance_tracking",
+        "leave_policy_enforcement",
+        "calendar_integration",
+        "notification_management",
+        "conflict_detection",
+        "schedule_optimization"
+      ],
+      "functions": {
+        "main_function": "leave_agent_main",
+        "process_function": "process_leave_request", 
+        "module_path": "agents.leave_agent"
+      },
+      "data_schemas": {
+        "input_schema": {
+          "emp_id": {
+            "type": "string",
+            "required": true,
+            "validation": "^[0-9]{5}$",
+            "description": "5-digit employee ID"
+          },
+          "request": {
+            "type": "string",
+            "required": true,
+            "min_length": 10,
+            "description": "Natural language leave request"
+          },
+          "feedbacks": {
+            "type": "array",
+            "required": false,
+            "items": {"type": "string"},
+            "description": "Previous feedback or iterations"
+          },
+          "attendance_context": {
+            "type": "object",
+            "required": false,
+            "description": "Context from attendance agent"
+          }
+        },
+        "output_schema": {
+          "status": {
+            "type": "string",
+            "enum": ["approved", "pending", "denied", "needs_clarification"],
+            "description": "Leave request status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Detailed response message"
+          },
+          "approval_required": {
+            "type": "boolean",
+            "description": "Whether manager approval is needed"
+          },
+          "leave_id": {
+            "type": "string",
+            "description": "Unique leave request identifier"
+          },
+          "leave_details": {
+            "type": "object",
+            "properties": {
+              "start_date": {"type": "string", "format": "date"},
+              "end_date": {"type": "string", "format": "date"},
+              "leave_type": {"type": "string"},
+              "days_requested": {"type": "integer"},
+              "remaining_balance": {"type": "integer"}
+            }
+          },
+          "notifications_sent": {
+            "type": "array",
+            "description": "List of notifications sent"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "processing_time": {"type": "float"},
+              "auto_approved": {"type": "boolean"},
+              "conflict_detected": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "configuration": {
+        "max_retries": 3,
+        "timeout": 60,
+        "priority": "HIGH",
+        "requires_location": false,
+        "async_capable": true,
+        "stateful": true,
+        "idempotent": false,
+        "transaction_safe": true
+      },
+      "triggers": [
+        "leave", "vacation", "time off", "PTO",
+        "work from home", "WFH", "remote",
+        "sick leave", "personal leave", "medical",
+        "holiday", "absence", "day off",
+        "emergency leave", "bereavement"
+      ],
+      "inter_agent_compatibility": {
+        "works_well_with": ["attendance", "chatbot"],
+        "conflicts_with": [],
+        "data_dependencies": {
+          "requires_from": {
+            "attendance": ["work_hours", "overtime_status", "compliance_record"],
+            "chatbot": ["policy_info", "approval_procedures"]
+          },
+          "provides_to": {
+            "attendance": ["leave_schedule", "approved_absences"],
+            "chatbot": ["leave_policies", "balance_info"],
+            "complaint": ["leave_related_issues"]
+          }
+        },
+        "workflow_position": "primary",
+        "can_initiate_workflows": true,
+        "can_be_parallel": false,
+        "coordination_role": "workflow_coordinator",
+        "data_transformation": {
+          "from_attendance": {
+            "work_hours": "attendance_context.total_hours",
+            "overtime_hours": "attendance_context.overtime"
+          },
+          "to_chatbot": {
+            "leave_status": "processed_leave.status",
+            "policy_context": "applicable_policies"
+          }
+        }
+      },
+      "dependencies": ["email_client", "postgres_client", "scheduler"],
+      "status": "active",
+      "error_handling": {
+        "retry_strategy": "exponential_backoff",
+        "fallback_agent": "chatbot",
+        "critical_errors": ["database_transaction_failed", "email_system_down"],
+        "recoverable_errors": ["calendar_sync_failed", "notification_delayed"],
+        "rollback_strategy": "transaction_rollback"
+      }
+    },
+    "complaint": {
+      "name": "ComplaintAgent",
+      "description": "Manages employee complaints, requests, escalations, and feedback processing",
+      "agent_type": "transactional",
+      "capabilities": [
+        "complaint_processing",
+        "request_handling", 
+        "escalation_management",
+        "feedback_analysis",
+        "issue_tracking",
+        "resolution_workflow",
+        "sentiment_analysis",
+        "priority_assessment"
+      ],
+      "functions": {
+        "main_function": "complaint_agent_main",
+        "process_function": "process_complaint_request",
+        "module_path": "agents.complaint_agent"
+      },
+      "data_schemas": {
+        "input_schema": {
+          "emp_id": {
+            "type": "string",
+            "required": true,
+            "validation": "^[0-9]{5}$",
+            "description": "5-digit employee ID"
+          },
+          "request": {
+            "type": "string",
+            "required": true,
+            "min_length": 10,
+            "description": "Complaint or request description"
+          },
+          "feedbacks": {
+            "type": "array",
+            "required": false,
+            "items": {"type": "string"},
+            "description": "Previous feedback or escalation history"
+          },
+          "related_data": {
+            "type": "object",
+            "required": false,
+            "properties": {
+              "attendance_issues": {"type": "object"},
+              "leave_conflicts": {"type": "object"},
+              "policy_context": {"type": "object"}
+            },
+            "description": "Context from other agents"
+          }
+        },
+        "output_schema": {
+          "status": {
+            "type": "string",
+            "enum": ["submitted", "in_progress", "resolved", "escalated", "closed"],
+            "description": "Complaint processing status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message to employee"
+          },
+          "ticket_id": {
+            "type": "string",
+            "description": "Unique complaint tracking ID"
+          },
+          "escalation_level": {
+            "type": "string",
+            "enum": ["none", "supervisor", "hr", "senior_management"],
+            "description": "Current escalation level"
+          },
+          "category": {
+            "type": "string",
+            "description": "Complaint category classification"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Issue priority level"
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": ["positive", "neutral", "negative", "very_negative"],
+            "description": "Sentiment analysis result"
+          },
+          "resolution_timeline": {
+            "type": "string",
+            "description": "Expected resolution timeframe"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "department_routed": {"type": "string"},
+              "auto_resolved": {"type": "boolean"},
+              "related_tickets": {"type": "array"}
+            }
+          }
+        }
+      },
+      "configuration": {
+        "max_retries": 2,
+        "timeout": 45,
+        "priority": "HIGH",
+        "requires_location": false,
+        "async_capable": true,
+        "stateful": true,
+        "idempotent": false,
+        "escalation_enabled": true
+      },
+      "triggers": [
+        "complaint", "issue", "problem", "request",
+        "broken", "not working", "help", "support",
+        "desk", "computer", "equipment", "facility",
+        "unfair", "wrong", "error", "mistake",
+        "discrimination", "harassment", "safety",
+        "laptop", "hardware", "new laptop", "request a new laptop", "device", "system", "IT support", "hardware request", "replacement laptop"
+      ],
+      "inter_agent_compatibility": {
+        "works_well_with": ["chatbot", "attendance", "leave"],
+        "conflicts_with": [],
+        "data_dependencies": {
+          "requires_from": {
+            "chatbot": ["policy_context", "escalation_procedures"],
+            "attendance": ["attendance_issues", "compliance_problems"],
+            "leave": ["leave_conflicts", "policy_violations"]
+          },
+          "provides_to": {
+            "chatbot": ["common_issues", "resolution_patterns"],
+            "attendance": ["equipment_issues", "workplace_problems"],
+            "leave": ["policy_clarifications", "process_improvements"]
+          }
+        },
+        "workflow_position": "primary",
+        "can_initiate_workflows": true,
+        "can_be_parallel": false,
+        "coordination_role": "issue_coordinator",
+        "escalation_triggers": {
+          "to_attendance": ["time_tracking_issues", "location_problems"],
+          "to_leave": ["leave_policy_disputes", "approval_delays"],
+          "to_chatbot": ["policy_clarification_needed"]
+        }
+      },
+      "dependencies": ["email_client", "postgres_client"],
+      "status": "active",
+      "error_handling": {
+        "retry_strategy": "exponential_backoff",
+        "fallback_agent": "chatbot",
+        "critical_errors": ["escalation_system_down", "notification_failed"],
+        "recoverable_errors": ["email_delay", "classification_uncertainty"],
+        "escalation_on_failure": true
+      }
+    },
+    "employee": {
+      "name": "EmployeeAgent",
+      "description": "Handles employee data queries, inter-employee emails, and profile updates with dept head notifications",
+      "agent_type": "operational",
+      "capabilities": [
+        "employee_data_queries",
+        "inter_employee_emails",
+        "profile_updates",
+        "dept_head_notifications",
+        "employee_search",
+        "data_retrieval",
+        "profile_management"
+      ],
+      "functions": {
+        "main_function": "employee_agent_main",
+        "process_function": "process_employee_request",
+        "module_path": "agents.employee_agent"
+      },
+      "data_schemas": {
+        "input_schema": {
+          "query": {
+            "type": "string",
+            "required": true,
+            "min_length": 3,
+            "max_length": 500,
+            "description": "Employee-related query or request"
+          },
+          "emp_id": {
+            "type": "string",
+            "required": true,
+            "validation": "^[0-9]{5}$",
+            "description": "Current employee ID"
+          }
+        },
+        "output_schema": {
+          "success": {
+            "type": "boolean",
+            "description": "Operation success status"
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "employee_info": {"type": "object"},
+              "email_content": {"type": "object"},
+              "profile_changes": {"type": "object"}
+            },
+            "description": "Structured response data"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if operation failed"
+          }
+        }
+      },
+      "configuration": {
+        "max_retries": 3,
+        "timeout": 30,
+        "priority": "HIGH",
+        "requires_location": false,
+        "async_capable": true,
+        "stateful": false,
+        "idempotent": true
+      },
+      "triggers": [
+        "tell my name", "my name", "my email", "my dept",
+        "emp", "employee", "email emp", "send email",
+        "change my", "update my", "modify my",
+        "what is my", "who is my", "my information",
+        "contact", "reach out", "message"
+      ],
+      "inter_agent_compatibility": {
+        "works_well_with": ["chatbot", "attendance", "leave"],
+        "conflicts_with": [],
+        "data_dependencies": {
+          "requires_from": {
+            "chatbot": ["policy_info"],
+            "attendance": ["employee_context"]
+          },
+          "provides_to": {
+            "chatbot": ["employee_data"],
+            "attendance": ["employee_info"],
+            "leave": ["employee_context"]
+          }
+        },
+        "workflow_position": "primary",
+        "can_initiate_workflows": true,
+        "can_be_parallel": true
+      },
+      "dependencies": ["postgres_client", "email_client"],
+      "status": "active",
+      "error_handling": {
+        "retry_strategy": "exponential_backoff",
+        "fallback_agent": "chatbot",
+        "critical_errors": ["database_error", "email_system_down"],
+        "recoverable_errors": ["parsing_error", "network_error"]
+      }
+    }
+  },
+  "multi_agent_workflows": {
+    "comprehensive_employee_issue": {
+      "description": "Handles complex employee issues requiring multiple agents",
+      "agents": ["complaint", "attendance", "leave", "chatbot"],
+      "workflow_type": "sequential_with_parallel",
+      "priority": "HIGH",
+      "execution_strategy": {
+        "phase_1": {
+          "agents": ["complaint"],
+          "type": "sequential",
+          "description": "Initial complaint processing and classification"
+        },
+        "phase_2": {
+          "agents": ["attendance", "leave"],
+          "type": "parallel",
+          "condition": "if complaint involves attendance or leave issues",
+          "description": "Gather context from relevant operational agents"
+        },
+        "phase_3": {
+          "agents": ["chatbot"],
+          "type": "sequential", 
+          "description": "Policy interpretation and final response synthesis"
+        }
+      },
+      "data_flow": {
+        "complaint -> attendance": {
+          "fields": ["emp_id", "issue_category", "time_period"],
+          "transformation": "extract_attendance_relevant_data"
+        },
+        "complaint -> leave": {
+          "fields": ["emp_id", "leave_related_issues", "dates_mentioned"],
+          "transformation": "extract_leave_relevant_data"
+        },
+        "attendance -> chatbot": {
+          "fields": ["compliance_issues", "policy_violations"],
+          "transformation": "format_for_policy_lookup"
+        },
+        "leave -> chatbot": {
+          "fields": ["policy_questions", "approval_issues"],
+          "transformation": "format_for_policy_interpretation"
+        },
+        "all -> final_response": {
+          "aggregation": "synthesize_comprehensive_response",
+          "conflict_resolution": "priority_based_resolution"
+        }
+      },
+      "conflict_resolution": {
+        "strategy": "agent_priority",
+        "priority_order": ["complaint", "leave", "attendance", "chatbot"],
+        "resolution_rules": {
+          "data_conflicts": "use_highest_priority_agent",
+          "recommendation_conflicts": "escalate_to_human",
+          "status_conflicts": "use_most_restrictive"
+        }
+      },
+      "success_criteria": {
+        "minimum_agents_success": 2,
+        "required_agents": ["complaint"],
+        "optional_agents": ["chatbot"]
+      }
+    },
+    "attendance_leave_coordination": {
+      "description": "Coordinates attendance tracking with leave management",
+      "agents": ["attendance", "leave"],
+      "workflow_type": "bidirectional",
+      "priority": "MEDIUM",
+      "execution_strategy": {
+        "trigger_conditions": ["leave_request_with_attendance_impact", "attendance_discrepancy"],
+        "coordination_type": "real_time_sync"
+      },
+      "data_flow": {
+        "attendance -> leave": {
+          "fields": ["current_attendance_status", "overtime_hours", "location_compliance"],
+          "transformation": "attendance_to_leave_context"
+        },
+        "leave -> attendance": {
+          "fields": ["approved_absences", "schedule_changes", "remote_work_approvals"],
+          "transformation": "leave_to_attendance_context"
+        }
+      },
+      "sync_strategy": {
+        "frequency": "real_time",
+        "conflict_detection": "automatic",
+        "resolution": "policy_based"
+      }
+    },
+    "policy_consultation_workflow": {
+      "description": "Multi-agent policy consultation and interpretation",
+      "agents": ["chatbot", "attendance", "leave", "complaint"],
+      "workflow_type": "consultation",
+      "priority": "LOW",
+      "execution_strategy": {
+        "primary_agent": "chatbot",
+        "consultation_agents": ["attendance", "leave", "complaint"],
+        "consultation_type": "expertise_based"
+      },
+      "data_flow": {
+        "chatbot -> others": {
+          "fields": ["policy_question", "context", "employee_situation"],
+          "transformation": "policy_consultation_request"
+        },
+        "others -> chatbot": {
+          "fields": ["domain_expertise", "precedents", "recommendations"],
+          "transformation": "expertise_response"
+        }
+      },
+      "aggregation_strategy": {
+        "method": "weighted_consensus",
+        "weights": {
+          "chatbot": 0.4,
+          "attendance": 0.25,
+          "leave": 0.25,
+          "complaint": 0.1
+        }
+      }
+    }
+  },
+  "global_settings": {
+    "default_timeout": 45,
+    "default_max_retries": 3,
+    "default_priority": "MEDIUM",
+    "autonomous_mode": true,
+    "multi_agent_enabled": true,
+    "dynamic_routing": true,
+    "fallback_agent": "chatbot",
+    "data_validation_enabled": true,
+    "conflict_resolution_enabled": true,
+    "workflow_optimization": true,
+    "real_time_coordination": true,
+    "cross_agent_learning": true
+  },
+  "routing_strategies": {
+    "intent_based": {
+      "confidence_threshold": 0.7,
+      "fallback_strategy": "clarification",
+      "multi_intent_handling": "workflow_coordination"
+    },
+    "keyword_based": {
+      "enabled": true,
+      "case_sensitive": false,
+      "fuzzy_matching": true,
+      "context_aware": true
+    },
+    "multi_intent": {
+      "enabled": true,
+      "max_agents": 4,
+      "coordination_strategy": "workflow_based",
+      "parallel_execution": true,
+      "data_flow_optimization": true
+    },
+    "context_based": {
+      "enabled": true,
+      "context_factors": ["employee_history", "previous_interactions", "current_workload"],
+      "context_weight": 0.3
+    }
+  },
+  "data_flow_management": {
+    "validation": {
+      "enabled": true,
+      "strict_mode": false,
+      "auto_correction": true
+    },
+    "transformation": {
+      "enabled": true,
+      "transformation_functions": {
+        "attendance_to_leave_context": "orchestrator_agent.transform_attendance_to_leave",
+        "leave_to_attendance_context": "orchestrator_agent.transform_leave_to_attendance",
+        "complaint_to_policy_context": "orchestrator_agent.transform_complaint_to_policy"
+      }
+    },
+    "aggregation": {
+      "strategies": ["merge", "priority_based", "weighted_average", "consensus"],
+      "conflict_resolution": "agent_hierarchy"
+    },
+    "caching": {
+      "enabled": true,
+      "ttl": 300,
+      "cache_keys": ["emp_id", "query_hash", "agent_combination"]
+    }
+  },
+  "monitoring_and_analytics": {
+    "workflow_tracking": {
+      "enabled": true,
+      "metrics": ["execution_time", "success_rate", "agent_utilization", "data_flow_efficiency"]
+    },
+    "performance_optimization": {
+      "enabled": true,
+      "auto_scaling": false,
+      "bottleneck_detection": true,
+      "workflow_optimization": true
+    },
+    "learning_and_adaptation": {
+      "enabled": true,
+      "learning_rate": 0.1,
+      "adaptation_triggers": ["repeated_failures", "new_patterns", "efficiency_improvements"]
+    }
+  }
+} 
