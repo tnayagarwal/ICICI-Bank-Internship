@@ -1,1 +1,1 @@
-name: DEAI MLOps
+on: [push, pull_request]
