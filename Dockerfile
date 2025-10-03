@@ -1,1 +1,1 @@
-COPY src/ /app/src/
+EXPOSE 8000
