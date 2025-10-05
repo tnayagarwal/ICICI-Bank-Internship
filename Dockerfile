@@ -1,1 +1,1 @@
-EXPOSE 8000
+CMD ["uvicorn", "src.main:app"]
