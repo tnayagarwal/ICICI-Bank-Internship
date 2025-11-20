@@ -1,2 +1,4 @@
 - name: Build Docker
   run: docker build .
+    env:
+      CI_MODE: true
