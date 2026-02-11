@@ -474,11 +474,12 @@ Do NOT include any introductory or trailing text."""
             if decision == "AUTO_APPROVED":
                 # For auto-approved leaves, send notification email
                 subject = f"Leave Auto-Approved: {start} to {end} ({days} working day{'s' if days != 1 else ''})"
+                reason_line = f"Reason: {reason}\n" if reason and reason != "not specified" else ""
                 body = (
                     f"Dear {dept_head},\n"
                     f"This is to inform you that {emp_name} (Employee ID: {emp_id}) has been granted {days} working day{'s' if days != 1 else ''} "
                     f"of {leave_type} leave from {start} to {end}.\n"
-                    f"{'Reason: ' + reason + '\n' if reason and reason != 'not specified' else ''}"
+                    f"{reason_line}"
                     f"This leave has been auto-approved as per company policy.\n"
                     f"Best regards,\n"
                     f"HR System"

@@ -96,21 +96,21 @@ def import_csv_to_table(table_name, csv_file):
                             else:
                                 processed_row.append(None if cell == '' or cell == 'null' else cell)
                         
-                placeholders = ', '.join(['%s'] * len(headers))
-                insert_sql = f"INSERT INTO {table_name} ({', '.join(headers)}) VALUES ({placeholders})"
+                        placeholders = ', '.join(['%s'] * len(headers))
+                        insert_sql = f"INSERT INTO {table_name} ({', '.join(headers)}) VALUES ({placeholders})"
                         cur.execute(insert_sql, processed_row)
                 
                 else:
                     # Standard import for other tables
-                rows_inserted = 0
-                for row in reader:
-                    # Convert empty strings to None for NULL values
+                    rows_inserted = 0
+                    for row in reader:
+                        # Convert empty strings to None for NULL values
                         processed_row = [None if cell == '' or cell == 'null' else cell for cell in row]
                         
                         placeholders = ', '.join(['%s'] * len(headers))
                         insert_sql = f"INSERT INTO {table_name} ({', '.join(headers)}) VALUES ({placeholders})"
-                    cur.execute(insert_sql, processed_row)
-                    rows_inserted += 1
+                        cur.execute(insert_sql, processed_row)
+                        rows_inserted += 1
                 
                 conn.commit()
                 print(f"✅ Imported {table_name}: imported successfully")
