@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICICI Bank - HR Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icici_logo.png') }}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='icici_logo.png') }}" alt="ICICI Bank" class="login-logo">
+            </div>
+            
+            <h1 class="login-title">HR Assistant</h1>
+            <p class="login-subtitle">Your intelligent workplace companion</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="empId" class="form-label">Employee ID</label>
+                    <input 
+                        type="text" 
+                        id="empId" 
+                        name="empId" 
+                        class="form-input" 
+                        placeholder="Enter your Employee ID"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span id="loginText">Sign In</span>
+                    <div class="spinner" id="loginSpinner" style="display: none;"></div>
+                </button>
+            </form>
+            
+            <div class="alert alert-error" id="errorMessage" style="display: none;"></div>
+            
+            <div class="login-footer">
+                <div class="text-center mt-3">
+                    <p style="color: var(--icici-gray); font-size: 0.9rem;">
+                        <strong>Available Services:</strong>
+                    </p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                        <div style="background: var(--icici-gray-light); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem;">
+                            📅 Leave Management
+                        </div>
+                        <div style="background: var(--icici-gray-light); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem;">
+                            ⏰ Attendance Tracking
+                        </div>
+                        <div style="background: var(--icici-gray-light); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem;">
+                            🎫 Support Requests
+                        </div>
+                        <div style="background: var(--icici-gray-light); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem;">
+                            💬 Policy Information
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const empId = document.getElementById('empId').value.trim();
+            const loginBtn = document.getElementById('loginBtn');
+            const loginText = document.getElementById('loginText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            if (!empId) {
+                showError('Please enter your Employee ID');
+                return;
+            }
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginText.style.display = 'none';
+            loginSpinner.style.display = 'block';
+            hideError();
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ emp_id: empId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Success - redirect to chat
+                    window.location.href = '/';
+                } else {
+                    showError(data.message || 'Login failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Network error. Please check your connection and try again.');
+            } finally {
+                // Reset button state
+                loginBtn.disabled = false;
+                loginText.style.display = 'block';
+                loginSpinner.style.display = 'none';
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                hideError();
+            }, 5000);
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        // Auto-focus on employee ID input
+        document.getElementById('empId').focus();
+        
+        // Handle Enter key in input
+        document.getElementById('empId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html> 
