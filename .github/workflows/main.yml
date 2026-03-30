@@ -1,2 +1,2 @@
-jobs:
-  test-and-build:
+steps:
+  - uses: actions/checkout@v3
