@@ -61,3 +61,5 @@ pytest tests/ -v
 > **Note:** Database credentials and API keys are excluded. See `.env.example`.
 
 <!-- Developer comment #3 for optimization and readability check. -->
+
+<!-- Developer comment #5 for optimization and readability check. -->
