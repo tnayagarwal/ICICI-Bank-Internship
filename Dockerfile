@@ -1,1 +1,1 @@
-RUN apt-get update && apt-get install build-essential
+COPY src/ /app/src/
