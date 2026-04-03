@@ -751,3 +751,5 @@ def process_chat_query_langgraph(query):
     else:
         return {"answer": "Sorry, I couldn't find a relevant policy. Please contact HR for more info.", "source": None} 
 # Developer comment #2 for optimization and readability check.
+
+# Developer comment #6 for optimization and readability check.
