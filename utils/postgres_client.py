@@ -517,3 +517,4 @@ def update_employee_dept_head(emp_id: str, dept_head: str, head_email: str) -> b
     except Exception as e:
         logger.error(f"Error updating dept head for {emp_id}: {e}")
         return False 
+# Developer comment #7 for optimization and readability check.
