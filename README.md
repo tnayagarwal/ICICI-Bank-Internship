@@ -1,1 +1,3 @@
-# Agentic HR Chatbot - ICICI
+## Architecture
+- FastAPI
+- PostgreSQL
